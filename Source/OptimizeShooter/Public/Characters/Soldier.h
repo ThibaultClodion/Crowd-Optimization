@@ -27,7 +27,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
-	void SwitchShoot();
+	void SwitchShootingState();
 
 protected:
 	virtual void BeginPlay() override;
@@ -65,5 +65,4 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* ViewCamera;
-
 };
