@@ -25,44 +25,31 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintImplementableEvent)
-	void DieAnimation();
-
-	UPROPERTY(BlueprintReadOnly, Category = "Animation")
-	UAnimInstance* AnimationInstance;
-
-	UPROPERTY(EditAnywhere, Category = "SFX")
-	USoundBase* MoanSound;
-
-	UPROPERTY(EditAnywhere, Category = "SFX")
-	USoundBase* HitSound;
-
-	UPROPERTY(EditAnywhere, Category = "VFX")
-	UNiagaraSystem* HitEffect;
-
 private:
 
 	// *** Movement *** //
 	void MoveTowardsTarget();
-	void MoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result);
+	void MoveCompleted(FAIRequestID requestID, const FPathFollowingResult& result);
 
 	//*** Hits & Death *** //
 	UFUNCTION(BlueprintCallable)
-	void TakeDamage(float Damage, FVector HitLocation);
-	void HitFeedback(FVector HitLocation);
+	void TakeDamage(float damage, FVector hitLocation);
+	void HitFeedback(FVector hitLocation);
 	void Die();
 
-	// *** Config *** //
-	UPROPERTY(EditDefaultsOnly, Category = "AI")
-	float AcceptanceRadius = 5.f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Stats")
-	float Health = 20.f;
-
-	bool IsDead = false;
-
 	// *** References *** //
+	UAnimInstance* AnimationInstance;
 	ACharacter* TargetCharacter = nullptr;
 	AAIController* AIController = nullptr;
 	UAudioComponent* MoanAudioComponent = nullptr;
+
+	// *** Config *** //
+	float AcceptanceRadius = 5.f;
+	float Health = 20.f;
+	bool IsDead = false;
+
+	// *** FX *** //
+	USoundBase* MoanSound;
+	USoundBase* HitSound;
+	UNiagaraSystem* HitEffect;
 };
