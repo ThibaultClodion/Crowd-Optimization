@@ -21,7 +21,7 @@ void ASpawnerV2::BeginPlay()
 
 void ASpawnerV2::SpawnZombies()
 {
-	while (SpawnedCount < ToSpawnCount)
+	while (AliveCount < ToSpawnCount)
 	{
 		SpawnOneZombie();
 	}
@@ -29,8 +29,9 @@ void ASpawnerV2::SpawnZombies()
 
 void ASpawnerV2::SpawnOneZombie()
 {
-	GetWorld()->SpawnActor<AActor>(ZombieClass.Get(), GetRandomPointInSpawnArea(), SpawnParams);
-	SpawnedCount++;
+	AZombieV2* Zombie = GetWorld()->SpawnActor<AZombieV2>(AZombieV2::StaticClass(), GetRandomPointInSpawnArea(), SpawnParams);
+	Zombie->OnDied.AddDynamic(this, &ASpawnerV2::OnZombieDied);
+	AliveCount++;
 }
 
 FTransform ASpawnerV2::GetRandomPointInSpawnArea() const
@@ -44,5 +45,19 @@ FTransform ASpawnerV2::GetRandomPointInSpawnArea() const
 	FVector RandomPoint = Origin + FVector(RandX, RandY, ZPosition);
 
 	return FTransform(RandomPoint);
+}
+
+void ASpawnerV2::OnZombieDied(AZombieV2* DeadZombie)
+{
+	AliveCount--;
+
+	GetWorld()->GetTimerManager().SetTimer(RespawnTimerHandle, 
+		FTimerDelegate::CreateUObject(this, &ASpawnerV2::RespawnZombie, DeadZombie), RespawnDelay, false);
+}
+
+void ASpawnerV2::RespawnZombie(AZombieV2* DeadZombie)
+{
+	DeadZombie->Destroy();
+	SpawnOneZombie();
 }
 

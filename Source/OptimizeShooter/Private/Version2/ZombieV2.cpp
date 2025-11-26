@@ -12,6 +12,7 @@
 AZombieV2::AZombieV2()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	if (GetMesh())
 	{
@@ -83,12 +84,14 @@ void AZombieV2::MoveCompleted(FAIRequestID requestID, const FPathFollowingResult
 	MoveTowardsTarget();
 }
 
-void AZombieV2::TakeDamage(float damage, FVector hitLocation)
+void AZombieV2::OnHit(float damage, FVector hitLocation)
 {
+	if (IsDead) return;
+
 	Health -= damage;
 	HitFeedback(hitLocation);
 
-	if(Health <= 0.f)
+	if (Health <= 0.f)
 	{
 		Die();
 	}
@@ -109,5 +112,5 @@ void AZombieV2::Die()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MoanAudioComponent->Stop();
 
-	// TODO : Tell ABP to play death animation
+	OnDied.Broadcast(this);
 }

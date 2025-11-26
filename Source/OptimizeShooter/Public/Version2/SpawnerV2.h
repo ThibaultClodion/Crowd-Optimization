@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ZombieV2.h"
 #include "SpawnerV2.generated.h"
 
 class UBoxComponent;
@@ -22,15 +23,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UBoxComponent* SpawnArea;
 
-	UPROPERTY(EditAnywhere, Category = "Spawning")
-	TSubclassOf<AActor> ZombieClass;
-
 private:
 	void SpawnZombies();
 	void SpawnOneZombie();
 	FTransform GetRandomPointInSpawnArea() const;
 
+	UFUNCTION()
+	void OnZombieDied(AZombieV2* DeadZombie);
+	void RespawnZombie(AZombieV2* DeadZombie);
+	FTimerHandle RespawnTimerHandle;
+	float RespawnDelay = 5.f;
+
 	FActorSpawnParameters SpawnParams;
 	int32 ToSpawnCount = 60;
-	int32 SpawnedCount = 0;
+	int32 AliveCount = 0;
 };

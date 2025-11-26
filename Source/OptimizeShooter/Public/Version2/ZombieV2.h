@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Version2/Hittable.h"
 #include "ZombieV2.generated.h"
 
 class UAnimInstance;
@@ -14,13 +15,18 @@ class AAIController;
 struct FAIRequestID;
 struct FPathFollowingResult;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnZombieDied, AZombieV2*, DeadZombie);
+
 UCLASS()
-class OPTIMIZESHOOTER_API AZombieV2 : public ACharacter
+class OPTIMIZESHOOTER_API AZombieV2 : public ACharacter, public IHittable
 {
 	GENERATED_BODY()
 
 public:
 	AZombieV2();
+
+	UPROPERTY(BlueprintAssignable, Category = "Zombie")
+	FOnZombieDied OnDied;
 
 protected:
 	virtual void BeginPlay() override;
@@ -33,7 +39,7 @@ private:
 
 	//*** Hits & Death *** //
 	UFUNCTION(BlueprintCallable)
-	void TakeDamage(float damage, FVector hitLocation);
+	void OnHit(float damage, FVector hitLocation) override;
 	void HitFeedback(FVector hitLocation);
 	void Die();
 
