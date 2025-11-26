@@ -19,6 +19,12 @@ void ASpawnerV2::BeginPlay()
 	SpawnZombies();
 }
 
+void ASpawnerV2::ChangeToSpawnCount(int32 NewCount)
+{
+	ToSpawnCount = NewCount;
+	SpawnZombies();
+}
+
 void ASpawnerV2::SpawnZombies()
 {
 	while (AliveCount < ToSpawnCount)

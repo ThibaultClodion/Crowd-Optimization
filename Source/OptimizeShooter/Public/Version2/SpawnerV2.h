@@ -20,6 +20,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintCallable, Category = "Spawner")
+	void ChangeToSpawnCount(int32 NewCount);
+
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UBoxComponent* SpawnArea;
 
@@ -35,6 +38,6 @@ private:
 	float RespawnDelay = 5.f;
 
 	FActorSpawnParameters SpawnParams;
-	int32 ToSpawnCount = 60;
+	int32 ToSpawnCount = 0;
 	int32 AliveCount = 0;
 };
