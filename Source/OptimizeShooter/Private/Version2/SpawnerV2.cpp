@@ -16,6 +16,7 @@ void ASpawnerV2::BeginPlay()
 	Super::BeginPlay();
 
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	World = GetWorld();
 	SpawnZombies();
 }
 
@@ -35,7 +36,7 @@ void ASpawnerV2::SpawnZombies()
 
 void ASpawnerV2::SpawnOneZombie()
 {
-	AZombieV2* Zombie = GetWorld()->SpawnActor<AZombieV2>(AZombieV2::StaticClass(), GetRandomPointInSpawnArea(), SpawnParams);
+	AZombieV2* Zombie = World->SpawnActor<AZombieV2>(AZombieV2::StaticClass(), GetRandomPointInSpawnArea(), SpawnParams);
 	Zombie->OnDied.AddDynamic(this, &ASpawnerV2::OnZombieDied);
 	AliveCount++;
 }
@@ -57,11 +58,11 @@ void ASpawnerV2::OnZombieDied(AZombieV2* DeadZombie)
 {
 	AliveCount--;
 
-	GetWorld()->GetTimerManager().SetTimer(RespawnTimerHandle, 
-		FTimerDelegate::CreateUObject(this, &ASpawnerV2::RespawnZombie, DeadZombie), RespawnDelay, false);
+	FTimerHandle TimerHandle;
+	World->GetTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateUObject(this, &ASpawnerV2::DestroyZombie, DeadZombie), 5.0f, false);
 }
 
-void ASpawnerV2::RespawnZombie(AZombieV2* DeadZombie)
+void ASpawnerV2::DestroyZombie(AZombieV2* DeadZombie)
 {
 	DeadZombie->Destroy();
 	SpawnOneZombie();

@@ -8,6 +8,7 @@
 #include "SpawnerV2.generated.h"
 
 class UBoxComponent;
+class UWorld;
 
 UCLASS()
 class OPTIMIZESHOOTER_API ASpawnerV2 : public AActor
@@ -33,10 +34,9 @@ private:
 
 	UFUNCTION()
 	void OnZombieDied(AZombieV2* DeadZombie);
-	void RespawnZombie(AZombieV2* DeadZombie);
-	FTimerHandle RespawnTimerHandle;
-	float RespawnDelay = 5.f;
+	void DestroyZombie(AZombieV2* DeadZombie);
 
+	UWorld* World;
 	FActorSpawnParameters SpawnParams;
 	int32 ToSpawnCount = 0;
 	int32 AliveCount = 0;
