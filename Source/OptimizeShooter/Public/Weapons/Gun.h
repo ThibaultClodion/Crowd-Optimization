@@ -8,6 +8,7 @@
 
 class UStaticMeshComponent;
 class UForceFeedbackEffect;
+class ASpawnerV3;
 
 UCLASS()
 class OPTIMIZESHOOTER_API AGun : public AActor
@@ -25,6 +26,8 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void Shoot();
+
+	void Fire();
 
 protected:
 	virtual void BeginPlay() override;
@@ -46,6 +49,8 @@ protected:
 
 
 private:
+	ASpawnerV3* Spawner;
+
 	bool IsShooting = false;
 	float TimeSinceLastShot = 0.0f;
 };
