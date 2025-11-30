@@ -8,6 +8,7 @@
 
 class UCapsuleComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSwitchAlive);
 
 UCLASS()
 class OPTIMIZESHOOTER_API AZombieV3 : public AActor
@@ -16,6 +17,9 @@ class OPTIMIZESHOOTER_API AZombieV3 : public AActor
 
 public:
     AZombieV3();
+
+    UPROPERTY(BlueprintAssignable)
+    FOnSwitchAlive OnSwitchAlive;
 
     UPROPERTY(VisibleAnywhere)
     USkeletalMeshComponent* MeshComponent;
@@ -27,4 +31,5 @@ public:
 
     void SetTransform(FVector Position, FRotator Rotation);
     void SetActive(bool bIsActive);
+	void SetCollisionEnabled(bool bEnabled);
 };

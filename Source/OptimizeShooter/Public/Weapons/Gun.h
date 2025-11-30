@@ -45,7 +45,7 @@ protected:
 	float Damage = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gun")
-	float Range = 1000.0f;
+	float Range = 2500.0f;
 
 
 private:

@@ -1,8 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Version3/SpawnerV3.h"
 #include "Components/BoxComponent.h"
 #include <Kismet/GameplayStatics.h>
-#include "Version3/SpawnerV3.h"
+#include "Version3/ZombieV3.h"
+#include <NiagaraFunctionLibrary.h>
 
 ASpawnerV3::ASpawnerV3()
 {
@@ -10,6 +12,20 @@ ASpawnerV3::ASpawnerV3()
 
 	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("Spawn Area"));
 	RootComponent = SpawnArea;
+
+	// Load Hit Sound
+	static ConstructorHelpers::FObjectFinder<USoundBase> HitSoundAsset(TEXT("/Game/Assets/Zombie/FX/Hit/MSS_HitFlesh.MSS_HitFlesh"));
+	if (HitSoundAsset.Succeeded())
+	{
+		HitSound = HitSoundAsset.Object;
+	}
+
+	// Load Hit Effect
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> HitEffectAsset(TEXT("/Game/Assets/Zombie/FX/Hit/NS_Blood.NS_Blood"));
+	if (HitEffectAsset.Succeeded())
+	{
+		HitEffect = HitEffectAsset.Object;
+	}
 }
 
 void ASpawnerV3::BeginPlay()
@@ -21,9 +37,9 @@ void ASpawnerV3::BeginPlay()
 	PlayerTarget = UGameplayStatics::GetPlayerCharacter(World, 0);
 
 	// Initialize Data Arrays
-	Positions.SetNumZeroed(ToSpawnCount);
-	Rotations.SetNumZeroed(ToSpawnCount);
-	Velocities.SetNumZeroed(ToSpawnCount);
+	//Positions.SetNumZeroed(ToSpawnCount);
+	//Rotations.SetNumZeroed(ToSpawnCount);
+	//Velocities.SetNumZeroed(ToSpawnCount);
 	Healths.SetNumZeroed(ToSpawnCount);
 	DeathTimers.SetNumZeroed(ToSpawnCount);
 
@@ -54,11 +70,13 @@ void ASpawnerV3::SetZombieCount(int32 Count)
 	SpawnZombies();
 }
 
-void ASpawnerV3::HitZombieAtIndex(int32 Index, float Damage)
+void ASpawnerV3::HitZombieAtIndex(int32 Index, float Damage, FVector HitLocation)
 {
 	Healths[Index] -= Damage;
 
-	// TODO : Implement Feedback
+	// Play Hit Feedback
+	UGameplayStatics::SpawnSoundAtLocation(GetWorld(), HitSound, HitLocation);
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HitEffect, HitLocation);
 }
 
 void ASpawnerV3::UpdateHealthSystem()
@@ -100,18 +118,23 @@ void ASpawnerV3::SpawnZombies()
 void ASpawnerV3::SpawnOneZombie()
 {
 	AZombieV3* Zombie = GetActorFromPool();
+
 	if (Zombie)
 	{
 		FTransform SpawnTransform = GetRandomPointInSpawnArea();
 		Zombie->SetActorTransform(SpawnTransform);
 		Zombie->SetActive(true);
+
 		AliveCount++;
 	}
 }
 
 void ASpawnerV3::KillZombie(int32 Index)
 {
-	Healths[Index] = MAX_flt;
+	ZombieActorPool[Index]->OnSwitchAlive.Broadcast();
+	ZombieActorPool[Index]->SetCollisionEnabled(false);
+
+	Healths[Index] = InitialHealth;
 	DeathTimers[Index] = RespawnDelay;
 	AliveCount--;
 }
@@ -158,5 +181,13 @@ AZombieV3* ASpawnerV3::GetActorFromPool()
 void ASpawnerV3::ReturnActorToPool(int32 PoolIndex)
 {
 	ZombieActorPool[PoolIndex]->SetActive(false);
+
+	// Notify Animation Blueprint that next Zombie is alive
+	ZombieActorPool[PoolIndex]->OnSwitchAlive.Broadcast();
+
+	// Initialize next Zombie Data
+	Healths[PoolIndex] = InitialHealth;
+	DeathTimers[PoolIndex] = -1.f;
+
 	AvailablePoolIndices.Enqueue(PoolIndex);
 }

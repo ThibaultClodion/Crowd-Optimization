@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Components/CapsuleComponent.h"
 #include "Version3/ZombieV3.h"
+#include "Components/CapsuleComponent.h"
 
 AZombieV3::AZombieV3()
 {
@@ -27,7 +27,7 @@ AZombieV3::AZombieV3()
 
 		// Set Animation Blueprint
 		MeshComponent->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-		static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBP(TEXT("/Game/Versions/Version2/ABP_ZombieV2.ABP_ZombieV2_C"));
+		static ConstructorHelpers::FClassFinder<UAnimInstance> AnimBP(TEXT("/Game/Versions/Version3/ABP_ZombieV3.ABP_ZombieV3_C"));
 		if (AnimBP.Succeeded())
 		{
 			MeshComponent->SetAnimInstanceClass(AnimBP.Class);
@@ -43,5 +43,17 @@ void AZombieV3::SetTransform(FVector Position, FRotator Rotation)
 void AZombieV3::SetActive(bool bIsActive)
 {
 	SetActorHiddenInGame(!bIsActive);
-	SetActorEnableCollision(bIsActive);
+	SetCollisionEnabled(bIsActive);
+}
+
+void AZombieV3::SetCollisionEnabled(bool bEnabled)
+{
+	if (bEnabled)
+	{
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
 }

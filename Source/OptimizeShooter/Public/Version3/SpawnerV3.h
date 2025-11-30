@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ZombieV3.h"
 #include "SpawnerV3.generated.h"
 
 class UBoxComponent;
+class UNiagaraSystem;
+class AZombieV3;
 
 UCLASS()
 class OPTIMIZESHOOTER_API ASpawnerV3 : public AActor
@@ -21,7 +22,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetZombieCount(int32 Count);
 
-	void HitZombieAtIndex(int32 Index, float Damage);
+	void HitZombieAtIndex(int32 Index, float Damage, FVector HitLocation);
 
 protected:
 	virtual void BeginPlay() override;
@@ -31,9 +32,9 @@ protected:
 
 private:
 	// Zombie data arrays
-	TArray<FVector> Positions;
-	TArray<FRotator> Rotations;
-	TArray<FVector> Velocities;
+	//TArray<FVector> Positions;
+	//TArray<FRotator> Rotations;
+	//TArray<FVector> Velocities;
 	TArray<float> Healths;
 	TArray<float> DeathTimers;
 	float InitialHealth = 20.f;
@@ -48,6 +49,11 @@ private:
 	int32 ToSpawnCount = 10;
 	int32 AliveCount = 0;
 
+	// FX
+	//USoundBase* MoanSound;
+	USoundBase* HitSound;
+	UNiagaraSystem* HitEffect;
+
 	// References
 	UPROPERTY()
 	ACharacter* PlayerTarget;
@@ -58,7 +64,6 @@ private:
 	//void UpdateMovementSystem(float DeltaTime);
 	void UpdateHealthSystem();
 	void UpdateDeathSystem(float DeltaTime);
-	//void UpdateRenderSystem();
 
 	// Spawner functions
 	void SpawnZombies();

@@ -3,7 +3,7 @@
 
 #include "Weapons/Gun.h"
 #include "Version3/SpawnerV3.h"
-#include <Version3/ZombieV3.h>
+#include "Version3/ZombieV3.h"
 #include <Kismet/GameplayStatics.h>
 
 AGun::AGun()
@@ -66,7 +66,7 @@ void AGun::Fire()
 
 		if (HitZombie)
 		{
-			Spawner->HitZombieAtIndex(HitZombie->ZombieIndex, Damage);
+			Spawner->HitZombieAtIndex(HitZombie->ZombieIndex, Damage, HitResult.ImpactPoint);
 		}
 	}
 }
