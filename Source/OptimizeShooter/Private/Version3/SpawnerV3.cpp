@@ -92,9 +92,24 @@ void ASpawnerV3::InitializePool()
 
 void ASpawnerV3::SetZombieCount(int32 Count)
 {
-	// TODO : May need a refacto (might not working)
-	CurrentZombieCount = FMath::Clamp(Count, 0, MaxZombieCount);
-	RebuildAliveIndices();
+	if (Count > CurrentZombieCount)
+	{
+		int32 ZombiesToSpawn = FMath::Clamp(Count - CurrentZombieCount, 0, MaxZombieCount - CurrentZombieCount);
+		for (int32 i = 0; i < ZombiesToSpawn; i++)
+		{
+			SpawnZombie(CurrentZombieCount + i);
+		}
+	}
+
+	else if (Count < CurrentZombieCount)
+	{
+		int32 ZombiesToRemove = FMath::Clamp(CurrentZombieCount - Count, 0, CurrentZombieCount);
+		for (int32 i = 0; i < ZombiesToRemove; i++)
+		{
+			int32 IndexToKill = AliveIndices.Last();
+			KillZombie(IndexToKill);
+		}
+	}
 }
 
 void ASpawnerV3::HitZombieAtIndex(int32 Index, float Damage, FVector HitLocation)
@@ -133,14 +148,14 @@ void ASpawnerV3::UpdateMovementSystem(float DeltaTime)
 
 void ASpawnerV3::UpdateHealthSystem()
 {
-	for (int32 i = 0; i < AliveIndices.Num(); i++)
+	// Iterate backwards to allow safe removal from AliveIndices
+	for (int32 i = AliveIndices.Num() - 1; i >= 0; i--)
 	{
 		const int32 Index = AliveIndices[i];
 
 		if (Healths[Index] <= 0.f)
 		{
 			KillZombie(Index);
-			i--;
 		}
 	}
 }
@@ -224,17 +239,4 @@ FVector ASpawnerV3::GetRandomSpawnPoint() const
 	float RandY = FMath::FRandRange(-Extent.Y, Extent.Y);
 
 	return Origin + FVector(RandX, RandY, 0.f);
-}
-
-void ASpawnerV3::RebuildAliveIndices()
-{
-	AliveIndices.Empty();
-
-	for (int32 i = 0; i < MaxZombieCount; i++)
-	{
-		if (IsAlive[i])
-		{
-			AliveIndices.Add(i);
-		}
-	}
 }

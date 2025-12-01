@@ -46,7 +46,7 @@ private:
 
 	// Parameters
 	int32 MaxZombieCount = 200;
-	int32 CurrentZombieCount = 10;
+	int32 CurrentZombieCount = 0;
 	float MovementSpeed = 50.f;
 	float InitialHealth = 20.f;
 	float RespawnDelay = 5.f;
@@ -77,5 +77,4 @@ private:
 	void SpawnZombie(int32 Index);
 	void KillZombie(int32 Index);
 	FVector GetRandomSpawnPoint() const;
-	void RebuildAliveIndices();
 };
