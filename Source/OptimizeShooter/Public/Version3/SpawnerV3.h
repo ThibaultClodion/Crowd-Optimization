@@ -35,10 +35,16 @@ private:
 	//TArray<FVector> Positions;
 	//TArray<FRotator> Rotations;
 	//TArray<FVector> Velocities;
+
 	TArray<float> Healths;
-	TArray<float> DeathTimers;
 	float InitialHealth = 20.f;
+
+	TArray<float> DeathTimers;
 	float RespawnDelay = 5.f;
+
+	TArray<float> MoanTimers;
+	float MinMoanInterval = 5.f;
+	float MaxMoanInterval = 20.f;
 
 	// Zombie pool
 	UPROPERTY()
@@ -50,7 +56,7 @@ private:
 	int32 AliveCount = 0;
 
 	// FX
-	//USoundBase* MoanSound;
+	USoundBase* MoanSound;
 	USoundBase* HitSound;
 	UNiagaraSystem* HitEffect;
 
@@ -64,6 +70,7 @@ private:
 	//void UpdateMovementSystem(float DeltaTime);
 	void UpdateHealthSystem();
 	void UpdateDeathSystem(float DeltaTime);
+	void UpdateMoanSystem(float DeltaTime);
 
 	// Spawner functions
 	void SpawnZombies();

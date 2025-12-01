@@ -13,6 +13,13 @@ ASpawnerV3::ASpawnerV3()
 	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("Spawn Area"));
 	RootComponent = SpawnArea;
 
+	// Load Moan Sound
+	static ConstructorHelpers::FObjectFinder<USoundBase> MoanSoundAsset(TEXT("/Game/Assets/Zombie/FX/Moan/MSS_Moan2.MSS_Moan2"));
+	if (MoanSoundAsset.Succeeded())
+	{
+		MoanSound = MoanSoundAsset.Object;
+	}
+
 	// Load Hit Sound
 	static ConstructorHelpers::FObjectFinder<USoundBase> HitSoundAsset(TEXT("/Game/Assets/Zombie/FX/Hit/MSS_HitFlesh.MSS_HitFlesh"));
 	if (HitSoundAsset.Succeeded())
@@ -42,11 +49,19 @@ void ASpawnerV3::BeginPlay()
 	//Velocities.SetNumZeroed(ToSpawnCount);
 	Healths.SetNumZeroed(ToSpawnCount);
 	DeathTimers.SetNumZeroed(ToSpawnCount);
+	MoanTimers.SetNumZeroed(ToSpawnCount);
 
 	for(int i = 0; i < ToSpawnCount; i++)
 	{
 		Healths[i] = InitialHealth;
-		DeathTimers[i] = -1.f; // Negative means alive
+	}
+	for(int i = 0; i < ToSpawnCount; i++)
+	{
+		DeathTimers[i] = -1.f;
+	}
+	for(int i = 0; i < ToSpawnCount; i++)
+	{
+		MoanTimers[i] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
 	}
 
 	// Initialize Zombie Pool
@@ -62,6 +77,7 @@ void ASpawnerV3::Tick(float DeltaTime)
 
 	UpdateHealthSystem();
 	UpdateDeathSystem(DeltaTime);
+	UpdateMoanSystem(DeltaTime);
 }
 
 void ASpawnerV3::SetZombieCount(int32 Count)
@@ -107,6 +123,20 @@ void ASpawnerV3::UpdateDeathSystem(float DeltaTime)
 	}
 }
 
+void ASpawnerV3::UpdateMoanSystem(float DeltaTime)
+{
+	for(int i =0; i < ToSpawnCount; i++)
+	{
+		MoanTimers[i] -= DeltaTime;
+
+		if (MoanTimers[i] <= 0.f)
+		{
+			UGameplayStatics::SpawnSoundAtLocation(GetWorld(), MoanSound, ZombieActorPool[i]->GetActorLocation());
+			MoanTimers[i] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
+		}
+	}
+}
+
 void ASpawnerV3::SpawnZombies()
 {
 	while (AliveCount < ToSpawnCount)
@@ -125,6 +155,11 @@ void ASpawnerV3::SpawnOneZombie()
 		Zombie->SetActorTransform(SpawnTransform);
 		Zombie->SetActive(true);
 
+		// Initialize data
+		MoanTimers[Zombie->ZombieIndex] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
+		Healths[Zombie->ZombieIndex] = InitialHealth;
+		DeathTimers[Zombie->ZombieIndex] = -1.f;
+
 		AliveCount++;
 	}
 }
@@ -134,6 +169,7 @@ void ASpawnerV3::KillZombie(int32 Index)
 	ZombieActorPool[Index]->OnSwitchAlive.Broadcast();
 	ZombieActorPool[Index]->SetCollisionEnabled(false);
 
+	MoanTimers[Index] = MAX_flt;
 	Healths[Index] = InitialHealth;
 	DeathTimers[Index] = RespawnDelay;
 	AliveCount--;
@@ -181,13 +217,7 @@ AZombieV3* ASpawnerV3::GetActorFromPool()
 void ASpawnerV3::ReturnActorToPool(int32 PoolIndex)
 {
 	ZombieActorPool[PoolIndex]->SetActive(false);
-
-	// Notify Animation Blueprint that next Zombie is alive
 	ZombieActorPool[PoolIndex]->OnSwitchAlive.Broadcast();
-
-	// Initialize next Zombie Data
-	Healths[PoolIndex] = InitialHealth;
-	DeathTimers[PoolIndex] = -1.f;
 
 	AvailablePoolIndices.Enqueue(PoolIndex);
 }
