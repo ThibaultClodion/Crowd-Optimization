@@ -32,28 +32,26 @@ protected:
 
 private:
 	// Zombie data arrays
-	//TArray<FVector> Positions;
-	//TArray<FRotator> Rotations;
-	//TArray<FVector> Velocities;
-
+	TArray<FVector> Positions;
+	TArray<FRotator> Rotations;
+	TArray<FVector> Velocities;
 	TArray<float> Healths;
-	float InitialHealth = 20.f;
-
 	TArray<float> DeathTimers;
-	float RespawnDelay = 5.f;
-
 	TArray<float> MoanTimers;
-	float MinMoanInterval = 5.f;
-	float MaxMoanInterval = 20.f;
+	TBitArray<> IsAlive;
+	TArray<int32> AliveIndices;
 
-	// Zombie pool
 	UPROPERTY()
 	TArray<AZombieV3*> ZombieActorPool;
-	TQueue<int32> AvailablePoolIndices;
 
-	// Spawning parameters
-	int32 ToSpawnCount = 10;
-	int32 AliveCount = 0;
+	// Parameters
+	int32 MaxZombieCount = 200;
+	int32 CurrentZombieCount = 10;
+	float MovementSpeed = 50.f;
+	float InitialHealth = 20.f;
+	float RespawnDelay = 5.f;
+	float MinMoanInterval = 5.f;
+	float MaxMoanInterval = 20.f;
 
 	// FX
 	USoundBase* MoanSound;
@@ -67,19 +65,17 @@ private:
 	FActorSpawnParameters SpawnParams;
 
 	// Systems
-	//void UpdateMovementSystem(float DeltaTime);
+	void UpdateMovementSystem(float DeltaTime);
 	void UpdateHealthSystem();
 	void UpdateDeathSystem(float DeltaTime);
 	void UpdateMoanSystem(float DeltaTime);
+	void SyncActorTransforms();
 
-	// Spawner functions
-	void SpawnZombies();
-	void SpawnOneZombie();
-	void KillZombie(int32 Index);
-	FTransform GetRandomPointInSpawnArea() const;
-
-	// Pooling functions
+	// Helpers
+	void InitializeData();
 	void InitializePool();
-	AZombieV3* GetActorFromPool();
-	void ReturnActorToPool(int32 PoolIndex);
+	void SpawnZombie(int32 Index);
+	void KillZombie(int32 Index);
+	FVector GetRandomSpawnPoint() const;
+	void RebuildAliveIndices();
 };

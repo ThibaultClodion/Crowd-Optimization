@@ -29,7 +29,6 @@ public:
 
     int32 ZombieIndex = -1;
 
-    void SetTransform(FVector Position, FRotator Rotation);
     void SetActive(bool bIsActive);
 	void SetCollisionEnabled(bool bEnabled);
 };

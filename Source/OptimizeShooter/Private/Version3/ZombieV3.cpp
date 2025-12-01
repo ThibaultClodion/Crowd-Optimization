@@ -35,11 +35,6 @@ AZombieV3::AZombieV3()
 	}
 }
 
-void AZombieV3::SetTransform(FVector Position, FRotator Rotation)
-{
-	SetActorLocationAndRotation(Position, Rotation);
-}
-
 void AZombieV3::SetActive(bool bIsActive)
 {
 	SetActorHiddenInGame(!bIsActive);
