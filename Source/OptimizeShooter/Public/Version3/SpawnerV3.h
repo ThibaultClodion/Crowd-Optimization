@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NavigationPath.h"
+#include "Version3/PathFindingSystem.h"
 #include "SpawnerV3.generated.h"
 
 class UBoxComponent;
@@ -36,7 +37,6 @@ private:
 	// Zombie data arrays
 	TArray<FVector> Positions;
 	TArray<FRotator> Rotations;
-	TArray<FVector> Velocities;
 	TArray<float> Healths;
 	TArray<float> DeathTimers;
 	TArray<float> MoanTimers;
@@ -56,16 +56,14 @@ private:
 	float MinMoanInterval = 5.f;
 	float MaxMoanInterval = 20.f;
 
-	// Pathfinding data
+	// Pathfinding system
 	UNavigationSystemV1* NavSystem;
 	ANavigationData* NavData;
-	TArray<FNavPathSharedPtr> CachedPaths;
-	TArray<int32> CurrentWaypointIndices;
-	TArray<float> PathUpdateTimers;
-	TArray<uint32> PendingPathQueryIDs;
+	FPathFindingSystem PathFindingSystem;
+	int32 MaxPathRequestsPerFrame = 10;
 	float PathUpdateInterval = 0.5f;
+	float MaxPathDistance = 5000.0f;
 	float WaypointReachedDistance = 50.f;
-	FNavAgentProperties NavAgentProperties;
 
 	// FX
 	USoundBase* MoanSound;
@@ -84,10 +82,6 @@ private:
 	void UpdateDeathSystem(float DeltaTime);
 	void UpdateMoanSystem(float DeltaTime);
 	void SyncActorTransforms();
-
-	// Pathfinding
-	void RequestPathForZombie(int32 ZombieIndex);
-	void OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path, int32 ZombieIndex);
 
 	// Helpers
 	void InitializeData();
