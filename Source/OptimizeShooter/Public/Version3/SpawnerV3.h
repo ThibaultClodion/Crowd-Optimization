@@ -59,9 +59,12 @@ private:
 	// Pathfinding data
 	UNavigationSystemV1* NavSystem;
 	ANavigationData* NavData;
-	TArray<UNavigationPath*> CachedPaths;
+	TArray<FNavPathSharedPtr> CachedPaths;
+	TArray<int32> CurrentWaypointIndices;
 	TArray<float> PathUpdateTimers;
+	TArray<uint32> PendingPathQueryIDs;
 	float PathUpdateInterval = 0.5f;
+	float WaypointReachedDistance = 50.f;
 	FNavAgentProperties NavAgentProperties;
 
 	// FX
@@ -84,7 +87,7 @@ private:
 
 	// Pathfinding
 	void RequestPathForZombie(int32 ZombieIndex);
-	void OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path);
+	void OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path, int32 ZombieIndex);
 
 	// Helpers
 	void InitializeData();

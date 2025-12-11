@@ -74,7 +74,9 @@ void ASpawnerV3::InitializeData()
 
 	// Pathfinding data
 	CachedPaths.SetNum(MaxZombieCount);
+	CurrentWaypointIndices.SetNum(MaxZombieCount);
 	PathUpdateTimers.SetNum(MaxZombieCount);
+	PendingPathQueryIDs.SetNum(MaxZombieCount);
 
 	// Initialize arrays
 	for (int32 i = 0; i < MaxZombieCount; i++)
@@ -86,7 +88,9 @@ void ASpawnerV3::InitializeData()
 		DeathTimers[i] = -1.f;
 		MoanTimers[i] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
 		CachedPaths[i] = nullptr;
+		CurrentWaypointIndices[i] = 0;
 		PathUpdateTimers[i] = 0.f;
+		PendingPathQueryIDs[i] = 0;
 	}
 }
 
@@ -136,8 +140,6 @@ void ASpawnerV3::HitZombieAtIndex(int32 Index, float Damage, FVector HitLocation
 
 void ASpawnerV3::UpdateMovementSystem(float DeltaTime)
 {
-	if (!PlayerTarget) return;
-
 	for (int32 i = 0; i < AliveIndices.Num(); i++)
 	{
 		const int32 Index = AliveIndices[i];
@@ -145,48 +147,108 @@ void ASpawnerV3::UpdateMovementSystem(float DeltaTime)
 		// Update path request timer
 		PathUpdateTimers[Index] -= DeltaTime;
 
-		// Request new path if timer expired
-		if (PathUpdateTimers[Index] <= 0.f)
+		// Request new path if timer expired and no pending request
+		if (PathUpdateTimers[Index] <= 0.f && PendingPathQueryIDs[Index] == 0)
 		{
 			PathUpdateTimers[Index] = PathUpdateInterval;
-
-			// Find path synchronously for now (we'll improve this later)
-			UNavigationPath* Path = NavSystem->FindPathToActorSynchronously(World, Positions[Index], PlayerTarget);
-			CachedPaths[Index] = Path;
+			RequestPathForZombie(Index);
 		}
 
-		// Use cached path for movement
-		UNavigationPath* Path = CachedPaths[Index];
-		if (Path && Path->PathPoints.Num() > 1)
+		// Move zombie along cached path if available
+		FNavPathSharedPtr Path = CachedPaths[Index];
+		if (Path.IsValid() && Path->IsValid())
 		{
-			FVector TargetWaypoint = Path->PathPoints[1];
+			const TArray<FNavPathPoint>& PathPoints = Path->GetPathPoints();
+			int32& CurrentWaypointIdx = CurrentWaypointIndices[Index];
 
-			// Calculate direction (use waypoint height from NavMesh)
-			FVector Direction = (TargetWaypoint - Positions[Index]).GetSafeNormal();
-			Velocities[Index] = Direction * MovementSpeed;
-
-			// Calculate new position
-			FVector NewPosition = Positions[Index] + Velocities[Index] * DeltaTime;
-
-			// Project position onto NavMesh to ensure it stays on walkable surface
-			FNavLocation ProjectedLocation;
-			if (NavSystem->ProjectPointToNavigation(NewPosition, ProjectedLocation, FVector(100.f, 100.f, 500.f), NavData))
+			// Check if we have a valid waypoint to move towards
+			if (CurrentWaypointIdx < PathPoints.Num())
 			{
-				Positions[Index] = ProjectedLocation.Location;
-				Positions[Index].Z += 90.f; // Adjust for zombie height
-			}
-			else
-			{
-				// Fallback: keep horizontal movement but preserve current height
-				Positions[Index].X = NewPosition.X;
-				Positions[Index].Y = NewPosition.Y;
-			}
+				FVector TargetWaypoint = PathPoints[CurrentWaypointIdx].Location;
 
-			// Lerp rotation towards movement direction
-			FRotator TargetRotation = Direction.Rotation();
-			TargetRotation = FRotator(0.f, TargetRotation.Yaw, 0.f);
-			Rotations[Index] = FMath::RInterpTo(Rotations[Index], TargetRotation, DeltaTime, RotationSpeed);
+				// Check if we've reached current waypoint
+				float DistanceToWaypoint = FVector::Dist(Positions[Index], TargetWaypoint);
+				if (DistanceToWaypoint < WaypointReachedDistance)
+				{
+					// Move to next waypoint
+					CurrentWaypointIdx++;
+
+					// If we've reached the end, invalidate path
+					if (CurrentWaypointIdx >= PathPoints.Num())
+					{
+						CachedPaths[Index] = nullptr;
+						CurrentWaypointIdx = 0;
+						continue;
+					}
+
+					// Update target to new waypoint
+					TargetWaypoint = PathPoints[CurrentWaypointIdx].Location;
+				}
+
+				// Calculate direction towards current waypoint
+				FVector Direction = (TargetWaypoint - Positions[Index]).GetSafeNormal();
+				Velocities[Index] = Direction * MovementSpeed;
+
+				// Calculate new position
+				FVector NewPosition = Positions[Index] + Velocities[Index] * DeltaTime;
+
+				// Project position onto NavMesh to ensure it stays on walkable surface
+				FNavLocation ProjectedLocation;
+				if (NavSystem->ProjectPointToNavigation(NewPosition, ProjectedLocation, FVector(100.f, 100.f, 500.f), NavData))
+				{
+					Positions[Index] = ProjectedLocation.Location;
+					Positions[Index].Z += 90.f; // Adjust for zombie height
+				}
+				else
+				{
+					// Fallback: keep horizontal movement but preserve current height
+					Positions[Index].X = NewPosition.X;
+					Positions[Index].Y = NewPosition.Y;
+				}
+
+				// Update rotation (only yaw)
+				FRotator TargetRotation = Direction.Rotation();
+				TargetRotation = FRotator(0.f, TargetRotation.Yaw, 0.f);
+				Rotations[Index] = FMath::RInterpTo(Rotations[Index], TargetRotation, DeltaTime, RotationSpeed);
+			}
 		}
+	}
+}
+
+void ASpawnerV3::RequestPathForZombie(int32 ZombieIndex)
+{
+	// Create path finding query
+	FPathFindingQuery Query(this, *NavData, Positions[ZombieIndex], PlayerTarget->GetActorLocation());
+
+	// Request async path
+	uint32 QueryID = NavSystem->FindPathAsync(
+		NavAgentProperties,
+		Query,
+		FNavPathQueryDelegate::CreateUObject(this, &ASpawnerV3::OnPathFound, ZombieIndex),
+		EPathFindingMode::Regular
+	);
+
+	// Store query ID to track pending request
+	PendingPathQueryIDs[ZombieIndex] = QueryID;
+}
+
+void ASpawnerV3::OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path, int32 ZombieIndex)
+{
+	// Clear pending query ID
+	PendingPathQueryIDs[ZombieIndex] = 0;
+
+	// Check if path was successfully found
+	if (Result == ENavigationQueryResult::Success && Path.IsValid() && Path->IsValid())
+	{
+		// Store the path
+		CachedPaths[ZombieIndex] = Path;
+		CurrentWaypointIndices[ZombieIndex] = 1; // Start from first waypoint
+	}
+	else
+	{
+		// Path finding failed, clear cached path
+		CachedPaths[ZombieIndex] = nullptr;
+		CurrentWaypointIndices[ZombieIndex] = 0;
 	}
 }
 
@@ -246,36 +308,6 @@ void ASpawnerV3::SyncActorTransforms()
 	}
 }
 
-void ASpawnerV3::RequestPathForZombie(int32 ZombieIndex)
-{
-	if (!PlayerTarget) return;
-
-	// Create path finding query
-	FPathFindingQuery Query(this, *NavData, Positions[ZombieIndex], PlayerTarget->GetActorLocation());
-
-	// Request async path
-	uint32 QueryID = NavSystem->FindPathAsync(
-		NavAgentProperties,
-		Query,
-		FNavPathQueryDelegate::CreateUObject(this, &ASpawnerV3::OnPathFound),
-		EPathFindingMode::Regular
-	);
-}
-
-void ASpawnerV3::OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path)
-{
-	// This callback is called when the async path is completed
-	// For simplicity, we'll store the path for all zombies that need updating
-	// In a real implementation, you'd want to track which zombie requested which path
-
-	if (Result == ENavigationQueryResult::Success && Path.IsValid())
-	{
-		// For now, just log that we found a path
-		// In the actual movement system, you'd use this path
-		UE_LOG(LogTemp, Log, TEXT("Path found with %d points"), Path->GetPathPoints().Num());
-	}
-}
-
 void ASpawnerV3::SpawnZombie(int32 Index)
 {
 	// Initialize data
@@ -287,6 +319,12 @@ void ASpawnerV3::SpawnZombie(int32 Index)
 	MoanTimers[Index] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
 	IsAlive[Index] = true;
 
+	// Reset pathfinding state
+	CachedPaths[Index] = nullptr;
+	CurrentWaypointIndices[Index] = 0;
+	PathUpdateTimers[Index] = -1.f; // Set to negative to trigger immediate path request
+	PendingPathQueryIDs[Index] = 0;
+
 	AliveIndices.Add(Index);
 	ZombieActorPool[Index]->SetActive(true);
 }
@@ -297,6 +335,11 @@ void ASpawnerV3::KillZombie(int32 Index)
 	DeathTimers[Index] = RespawnDelay;
 	MoanTimers[Index] = MAX_flt;
 	Healths[Index] = MAX_flt;
+
+	// Clear pathfinding state
+	CachedPaths[Index] = nullptr;
+	CurrentWaypointIndices[Index] = 0;
+	PendingPathQueryIDs[Index] = 0; // Cancel any pending request tracking
 
 	ZombieActorPool[Index]->OnSwitchAlive.Broadcast();
 	ZombieActorPool[Index]->SetCollisionEnabled(false);
