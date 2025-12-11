@@ -4,11 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NavigationPath.h"
 #include "SpawnerV3.generated.h"
 
 class UBoxComponent;
 class UNiagaraSystem;
 class AZombieV3;
+class UNavigationSystemV1;
 
 UCLASS()
 class OPTIMIZESHOOTER_API ASpawnerV3 : public AActor
@@ -48,10 +50,19 @@ private:
 	int32 MaxZombieCount = 200;
 	int32 CurrentZombieCount = 0;
 	float MovementSpeed = 50.f;
+	float RotationSpeed = 5.f;
 	float InitialHealth = 20.f;
 	float RespawnDelay = 5.f;
 	float MinMoanInterval = 5.f;
 	float MaxMoanInterval = 20.f;
+
+	// Pathfinding data
+	UNavigationSystemV1* NavSystem;
+	ANavigationData* NavData;
+	TArray<UNavigationPath*> CachedPaths;
+	TArray<float> PathUpdateTimers;
+	float PathUpdateInterval = 0.5f;
+	FNavAgentProperties NavAgentProperties;
 
 	// FX
 	USoundBase* MoanSound;
@@ -70,6 +81,10 @@ private:
 	void UpdateDeathSystem(float DeltaTime);
 	void UpdateMoanSystem(float DeltaTime);
 	void SyncActorTransforms();
+
+	// Pathfinding
+	void RequestPathForZombie(int32 ZombieIndex);
+	void OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path);
 
 	// Helpers
 	void InitializeData();

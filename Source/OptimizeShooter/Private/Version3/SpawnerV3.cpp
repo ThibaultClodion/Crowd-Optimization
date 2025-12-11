@@ -5,6 +5,8 @@
 #include <Kismet/GameplayStatics.h>
 #include "Version3/ZombieV3.h"
 #include <NiagaraFunctionLibrary.h>
+#include "NavigationPath.h"
+#include "NavigationSystem.h"
 #include "GameFramework/Character.h"
 
 ASpawnerV3::ASpawnerV3()
@@ -34,6 +36,11 @@ void ASpawnerV3::BeginPlay()
 
 	InitializeData();
 	InitializePool();
+
+	// Initialize pathfinding system
+	NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	NavData = NavSystem->GetDefaultNavDataInstance();
+	NavAgentProperties = NavData->GetConfig().DefaultProperties;
 
 	// Spawn initial zombies
 	for (int32 i = 0; i < CurrentZombieCount; i++)
@@ -65,6 +72,10 @@ void ASpawnerV3::InitializeData()
 	IsAlive.Init(false, MaxZombieCount);
 	AliveIndices.Reserve(MaxZombieCount);
 
+	// Pathfinding data
+	CachedPaths.SetNum(MaxZombieCount);
+	PathUpdateTimers.SetNum(MaxZombieCount);
+
 	// Initialize arrays
 	for (int32 i = 0; i < MaxZombieCount; i++)
 	{
@@ -74,6 +85,8 @@ void ASpawnerV3::InitializeData()
 		Healths[i] = InitialHealth;
 		DeathTimers[i] = -1.f;
 		MoanTimers[i] = FMath::FRandRange(MinMoanInterval, MaxMoanInterval);
+		CachedPaths[i] = nullptr;
+		PathUpdateTimers[i] = 0.f;
 	}
 }
 
@@ -123,25 +136,56 @@ void ASpawnerV3::HitZombieAtIndex(int32 Index, float Damage, FVector HitLocation
 
 void ASpawnerV3::UpdateMovementSystem(float DeltaTime)
 {
-	// TODO : Might not work (pathfinding ...)
-
 	if (!PlayerTarget) return;
-
-	const FVector PlayerPos = PlayerTarget->GetActorLocation();
 
 	for (int32 i = 0; i < AliveIndices.Num(); i++)
 	{
 		const int32 Index = AliveIndices[i];
 
-		FVector Direction = (PlayerPos - Positions[Index]).GetSafeNormal();
-		Direction.Z = 0.f;
+		// Update path request timer
+		PathUpdateTimers[Index] -= DeltaTime;
 
-		Velocities[Index] = Direction * MovementSpeed;
-		Positions[Index] += Velocities[Index] * DeltaTime;
-
-		if (!Direction.IsNearlyZero())
+		// Request new path if timer expired
+		if (PathUpdateTimers[Index] <= 0.f)
 		{
-			Rotations[Index] = Direction.Rotation();
+			PathUpdateTimers[Index] = PathUpdateInterval;
+
+			// Find path synchronously for now (we'll improve this later)
+			UNavigationPath* Path = NavSystem->FindPathToActorSynchronously(World, Positions[Index], PlayerTarget);
+			CachedPaths[Index] = Path;
+		}
+
+		// Use cached path for movement
+		UNavigationPath* Path = CachedPaths[Index];
+		if (Path && Path->PathPoints.Num() > 1)
+		{
+			FVector TargetWaypoint = Path->PathPoints[1];
+
+			// Calculate direction (use waypoint height from NavMesh)
+			FVector Direction = (TargetWaypoint - Positions[Index]).GetSafeNormal();
+			Velocities[Index] = Direction * MovementSpeed;
+
+			// Calculate new position
+			FVector NewPosition = Positions[Index] + Velocities[Index] * DeltaTime;
+
+			// Project position onto NavMesh to ensure it stays on walkable surface
+			FNavLocation ProjectedLocation;
+			if (NavSystem->ProjectPointToNavigation(NewPosition, ProjectedLocation, FVector(100.f, 100.f, 500.f), NavData))
+			{
+				Positions[Index] = ProjectedLocation.Location;
+				Positions[Index].Z += 90.f; // Adjust for zombie height
+			}
+			else
+			{
+				// Fallback: keep horizontal movement but preserve current height
+				Positions[Index].X = NewPosition.X;
+				Positions[Index].Y = NewPosition.Y;
+			}
+
+			// Lerp rotation towards movement direction
+			FRotator TargetRotation = Direction.Rotation();
+			TargetRotation = FRotator(0.f, TargetRotation.Yaw, 0.f);
+			Rotations[Index] = FMath::RInterpTo(Rotations[Index], TargetRotation, DeltaTime, RotationSpeed);
 		}
 	}
 }
@@ -199,6 +243,36 @@ void ASpawnerV3::SyncActorTransforms()
 	{
 		const int32 Index = AliveIndices[i];
 		ZombieActorPool[Index]->SetActorLocationAndRotation(Positions[Index], Rotations[Index]);
+	}
+}
+
+void ASpawnerV3::RequestPathForZombie(int32 ZombieIndex)
+{
+	if (!PlayerTarget) return;
+
+	// Create path finding query
+	FPathFindingQuery Query(this, *NavData, Positions[ZombieIndex], PlayerTarget->GetActorLocation());
+
+	// Request async path
+	uint32 QueryID = NavSystem->FindPathAsync(
+		NavAgentProperties,
+		Query,
+		FNavPathQueryDelegate::CreateUObject(this, &ASpawnerV3::OnPathFound),
+		EPathFindingMode::Regular
+	);
+}
+
+void ASpawnerV3::OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path)
+{
+	// This callback is called when the async path is completed
+	// For simplicity, we'll store the path for all zombies that need updating
+	// In a real implementation, you'd want to track which zombie requested which path
+
+	if (Result == ENavigationQueryResult::Success && Path.IsValid())
+	{
+		// For now, just log that we found a path
+		// In the actual movement system, you'd use this path
+		UE_LOG(LogTemp, Log, TEXT("Path found with %d points"), Path->GetPathPoints().Num());
 	}
 }
 
