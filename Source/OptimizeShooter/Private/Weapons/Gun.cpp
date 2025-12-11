@@ -35,11 +35,14 @@ void AGun::Tick(float DeltaTime)
 		if (TimeSinceLastShot >= FireRate)
 		{
 			TimeSinceLastShot = 0.0f;
+
+			// V3 shooting logic
 			Fire();
 
-			// V1 & V2 shooting logic removed for V3
-			// ShootFeedback();
-			// Shoot();
+			// V1 & V2 shooting logic
+			Shoot();
+
+			ShootFeedback();
 		}
 	}
 }
@@ -52,8 +55,6 @@ void AGun::SwitchShootState()
 
 void AGun::Fire()
 {
-	ShootFeedback();
-
 	FHitResult HitResult;
 
 	FVector StartLocation = MuzzleLocation->GetComponentLocation();

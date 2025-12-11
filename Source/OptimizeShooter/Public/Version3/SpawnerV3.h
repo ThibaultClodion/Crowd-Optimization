@@ -47,7 +47,7 @@ private:
 	TArray<AZombieV3*> ZombieActorPool;
 
 	// Parameters
-	int32 MaxZombieCount = 200;
+	int32 MaxZombieCount = 100;
 	int32 CurrentZombieCount = 0;
 	float MovementSpeed = 50.f;
 	float RotationSpeed = 5.f;
