@@ -17,6 +17,7 @@ public:
 
 	// Update the system (call once per tick)
 	void Update(float DeltaTime, const TArray<FVector>& ZombiePositions, const TArray<int32>& AliveIndices, FVector PlayerPosition);
+	void Update(float DeltaTime, const TArray<FTransform>& ZombieTransforms, const TArray<int32>& AliveIndices, FVector PlayerPosition);
 
 	// Request a path for a zombie (queued with priority)
 	void RequestPath(int32 ZombieIndex, FVector StartPos, FVector TargetPos);
@@ -84,6 +85,7 @@ private:
 	// Internal methods
 	void ProcessRequestQueue();
 	void UpdatePathTimers(float DeltaTime, const TArray<FVector>& ZombiePositions, const TArray<int32>& AliveIndices, FVector PlayerPosition);
+	void UpdatePathTimers(float DeltaTime, const TArray<FTransform>& ZombieTransforms, const TArray<int32>& AliveIndices, FVector PlayerPosition);
 	void SortRequestQueue();
 	float CalculatePriority(FVector ZombiePos, FVector PlayerPos) const;
 	void OnPathFound(uint32 PathId, ENavigationQueryResult::Type Result, FNavPathSharedPtr Path, int32 ZombieIndex);
