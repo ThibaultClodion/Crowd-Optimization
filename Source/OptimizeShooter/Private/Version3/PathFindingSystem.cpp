@@ -47,15 +47,6 @@ void FPathFindingSystem::Update(float DeltaTime, const TArray<FVector>& ZombiePo
 	ProcessRequestQueue();
 }
 
-void FPathFindingSystem::Update(float DeltaTime, const TArray<FTransform>& ZombieTransforms, const TArray<int32>& AliveIndices, FVector PlayerPosition)
-{
-	// Update path timers and queue requests for zombies that need new paths
-	UpdatePathTimers(DeltaTime, ZombieTransforms, AliveIndices, PlayerPosition);
-
-	// Process the highest priority requests
-	ProcessRequestQueue();
-}
-
 void FPathFindingSystem::UpdatePathTimers(float DeltaTime, const TArray<FVector>& ZombiePositions, const TArray<int32>& AliveIndices, FVector PlayerPosition)
 {
 	for (int32 i = 0; i < AliveIndices.Num(); i++)
@@ -71,34 +62,6 @@ void FPathFindingSystem::UpdatePathTimers(float DeltaTime, const TArray<FVector>
 			PathUpdateTimers[Index] = PathUpdateInterval;
 
 			FVector ZombiePos = ZombiePositions[Index];
-			float DistanceToPlayer = FVector::Dist(ZombiePos, PlayerPosition);
-
-			// Skip distant zombies
-			if (DistanceToPlayer > MaxPathDistance)
-			{
-				continue;
-			}
-
-			RequestPath(Index, ZombiePos, PlayerPosition);
-		}
-	}
-}
-
-void FPathFindingSystem::UpdatePathTimers(float DeltaTime, const TArray<FTransform>& ZombieTransform, const TArray<int32>& AliveIndices, FVector PlayerPosition)
-{
-	for (int32 i = 0; i < AliveIndices.Num(); i++)
-	{
-		const int32 Index = AliveIndices[i];
-
-		// Update timer
-		PathUpdateTimers[Index] -= DeltaTime;
-
-		// Check if we need to request a new path
-		if (PathUpdateTimers[Index] <= 0.0f && PendingQueryIDs[Index] == 0)
-		{
-			PathUpdateTimers[Index] = PathUpdateInterval;
-
-			FVector ZombiePos = ZombieTransform[Index].GetLocation();
 			float DistanceToPlayer = FVector::Dist(ZombiePos, PlayerPosition);
 
 			// Skip distant zombies
